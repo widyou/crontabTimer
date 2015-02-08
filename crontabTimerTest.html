@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>crontab timer test</title>
+	<!-- jquery -->
+	<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.3.js"></script>
+</head>
+<body>
+	<pre id="test"></pre>
+	<script type="text/javascript">
+		function log(value) {
+			var now = new Date();
+			var pre = $('pre#test');
+			pre.html(pre.html()+(now.toLocaleDateString())+': '+value+'\n');
+		}
+	</script>
+	<script type="text/javascript" src="crontabTimer.js"></script>
+	<script type="text/javascript">
+
+		var ct = new CrontabTimer();
+		log('ct.getNextTime(): '+ct.getNextTime());
+		log('ct.getPrevTime(): '+ct.getPrevTime());
+		log('ct.getNextTime(): '+ct.getNextTime());
+		log('ct.getPrevTime(): '+ct.getPrevTime());
+		ct.test();
+	</script>
+</body>
+</html>
