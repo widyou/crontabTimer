@@ -7,25 +7,61 @@
 	<title>crontab timer test</title>
 	<!-- jquery -->
 	<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.3.js"></script>
+	<!-- QUnit css -->
+	<link rel="stylesheet" href="http://code.jquery.com/qunit/qunit-1.17.1.css">
 </head>
 <body>
-	<pre id="test"></pre>
-	<script type="text/javascript">
-		function log(value) {
-			var now = new Date();
-			var pre = $('pre#test');
-			pre.html(pre.html()+(now.toLocaleDateString())+': '+value+'\n');
-		}
-	</script>
+	<div id="qunit"></div>
+	<div id="qunit-fixture"></div>
 	<script type="text/javascript" src="crontabTimer.js"></script>
+	<script src="http://code.jquery.com/qunit/qunit-1.17.1.js"></script>
 	<script type="text/javascript">
+		QUnit.test("simple test", function(assert) {
+			var ct = new CrontabTimer('3 * * * *', {
+				test: true,
+				now: new Date(2015, 2-1, 10, 13, 4)
+			});
+			assert.strictEqual(new Date(2015, 2-1, 10, 14, 3).getTime(), ct.getNextTime(), "simple check next(minute)");
+			assert.strictEqual(new Date(2015, 2-1, 10, 13, 3).getTime(), ct.getPrevTime(), "simple check prev(minute)");
+			assert.strictEqual(new Date(2015, 2-1, 10, 14, 3).getTime(), ct.getNextDate().getTime(), "simple check next(minute) 2");
+			assert.strictEqual(new Date(2015, 2-1, 10, 13, 3).getTime(), ct.getPrevDate().getTime(), "simple check prev(minute) 2");
 
-		var ct = new CrontabTimer('* * * * *');
-		log('ct.getNextTime(): '+ct.getNextTime());
-		log('ct.getPrevTime(): '+ct.getPrevTime());
-		log('ct.getNextTime(): '+ct.getNextTime());
-		log('ct.getPrevTime(): '+ct.getPrevTime());
-		ct.test();
+			ct = new CrontabTimer('* 3 * * *', {
+				test: true,
+				now: new Date(2015, 2-1, 10, 13, 4)
+			});
+			assert.strictEqual(new Date(2015, 2-1, 11, 3, 4).getTime(), ct.getNextTime(), "simple check next(hour)");
+			assert.strictEqual(new Date(2015, 2-1, 10, 3, 4).getTime(), ct.getPrevTime(), "simple check prev(hour)");
+			assert.strictEqual(new Date(2015, 2-1, 11, 3, 4).getTime(), ct.getNextDate().getTime(), "simple check next(hour) 2");
+			assert.strictEqual(new Date(2015, 2-1, 10, 3, 4).getTime(), ct.getPrevDate().getTime(), "simple check prev(hour) 2");
+
+			ct = new CrontabTimer('* * 3 * *', {
+				test: true,
+				now: new Date(2015, 2-1, 10, 13, 4)
+			});
+			assert.strictEqual(new Date(2015, 3-1, 3, 13, 4).getTime(), ct.getNextTime(), "simple check next(day of month)");
+			assert.strictEqual(new Date(2015, 2-1, 3, 13, 4).getTime(), ct.getPrevTime(), "simple check prev(day of month)");
+			assert.strictEqual(new Date(2015, 3-1, 3, 13, 4).getTime(), ct.getNextDate().getTime(), "simple check next(day of month) 2");
+			assert.strictEqual(new Date(2015, 2-1, 3, 13, 4).getTime(), ct.getPrevDate().getTime(), "simple check prev(day of month) 2");
+
+			ct = new CrontabTimer('* * * 3 *', {
+				test: true,
+				now: new Date(2015, 2-1, 10, 13, 4)
+			});
+			assert.strictEqual(new Date(2015, 3-1, 10, 13, 4).getTime(), ct.getNextTime(), "simple check next(month)");
+			assert.strictEqual(new Date(2014, 3-1, 10, 13, 4).getTime(), ct.getPrevTime(), "simple check prev(month)");
+			assert.strictEqual(new Date(2015, 3-1, 10, 13, 4).getTime(), ct.getNextDate().getTime(), "simple check next(month) 2");
+			assert.strictEqual(new Date(2014, 3-1, 10, 13, 4).getTime(), ct.getPrevDate().getTime(), "simple check prev(month) 2");
+
+			ct = new CrontabTimer('* * * * 3', {
+				test: true,
+				now: new Date(2015, 2-1, 10, 13, 4)
+			});
+			assert.strictEqual(new Date(2015, 2-1, 11, 13, 4).getTime(), ct.getNextTime(), "simple check next(day of week)");
+			assert.strictEqual(new Date(2015, 2-1,  4, 13, 4).getTime(), ct.getPrevTime(), "simple check prev(day of week)");
+			assert.strictEqual(new Date(2015, 2-1, 11, 13, 4).getTime(), ct.getNextDate().getTime(), "simple check next(day of week) 2");
+			assert.strictEqual(new Date(2015, 2-1,  4, 13, 4).getTime(), ct.getPrevDate().getTime(), "simple check prev(day of week) 2");
+});
 	</script>
 </body>
 </html>
