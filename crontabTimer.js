@@ -76,16 +76,51 @@ for (var i in timeUnits) {
 			methodsForTimeUnit[u].set.call(this, methodsForTimeUnit[u].get.call(this) + amount);
 		};
 	})();
-	methodsForTimeUnit[unit].plusOne = (function() {
+	methodsForTimeUnit[unit].setNext = (function() {
 		var u = ''+unit; // convert closure to local value
 		return function () {
 			methodsForTimeUnit[u].add.call(this, 1);
 		};
 	})();
-	methodsForTimeUnit[unit].minusOne = (function() {
+	methodsForTimeUnit[unit].setPrev = (function() {
 		var u = ''+unit; // convert closure to local value
 		return function () {
 			methodsForTimeUnit[u].add.call(this, -1);
+		};
+	})();
+	methodsForTimeUnit[unit].getDifference = (function() {
+		var u = ''+unit; // convert closure to local value
+		return function (destValueStr) {
+			var thisValue = methodsForTimeUnit[u].get.call(this);
+			if (destValueStr.match(/[0-9]+/)) {
+				var destValue = parseInt(destValueStr);
+				return destValue - thisValue;
+			}
+		};
+	})();
+	// go forward to minimum destination
+	methodsForTimeUnit[unit].upToMin = (function() {
+		var u = ''+unit; // convert closure to local value
+		var that = this;
+		return function (destArray) {
+			if (typeof destArray === 'undefined' || destArray.constructor !== Array) {
+				throw new Error('upToMin function must given array.');
+				return false;
+			}
+			var minDiff = 0;
+			if (destArray.length == 0) {
+				return false;
+			} else if (destArray.length == 1) {
+				minDiff = methodsForTimeUnit[u].getDifference.call(this, destArray[0]);
+			} else {
+				var diffArray = destArray.map(function (e) {
+					return methodsForTimeUnit[u].getDifference.call(that, e);
+				});
+				minDiff = destArray.reduce(function (previous, current) {
+					return Math.min(previous, current);
+				});
+			}
+			methodsForTimeUnit[u].add.call(this, minDiff);
 		};
 	})();
 }
@@ -93,23 +128,26 @@ for (var i in timeUnits) {
 // CrontabTimer constructor
 var CrontabTimer = function () {
 	var that = this;
+	this.now = 0;
 	// default value
 	this.timeString = '* * * * *';
 	this.time = {};
 	this.prevTime = 0;
 	this.nextTime = 0;
-	this.option = {};
+	this.option = {
+		test: false
+	};
 
 	// parse argument
 	if (arguments.length > 0) {
 		if (arguments[0].constructor === String) {
 			// CrontabTimer(time)
 			this.timeString = arguments[0];
-			if (arguments.length == 2 && arguments[1].constructor === Array) {
+			if (arguments.length == 2 && arguments[1].constructor === Object) {
 				// CrontabTimer(time, option)
 				$.extend(this.option, arguments[1]);
 			}
-		} else if (arguments[0].constructor === Array) {
+		} else if (arguments[0].constructor === Object) {
 			// CrontabTimer(option)
 			$.extend(this.option, arguments[0]);
 		}
@@ -131,19 +169,22 @@ CrontabTimer.prototype = (function () {
 			throw new Error('Date object not given.');
 		}
 		var value = methodsForTimeUnit[unit].get.call(date);
-		// check minute
-		return -1 !== this.time[timeUnits[0]].findIndex(function (e) {
-			if (e == '*' || (!isNaN(e) && value == parseInt(e))) {
+		// check for unit
+		return -1 !== this.time[unit].findIndex(function (e) {
+			if (e == '*' || (e.match(/[0-9]+/) && value == parseInt(e))) {
+				//console.log({r:'success1',u:unit,e:e,value:value});
 				return true;
 			} else {
 				var matchArray = e.match(/\*\/(\d+)/);
 				if (matchArray) {
 					var term = matchArray[1];
 					if (value % parseInt(term) == 0) {
+						//console.log({r:'success2',u:unit,e:e,value:value});
 						return true;
 					}
 				}
 			}
+			//console.log({r:'fail',u:unit,e:e,value:value});
 			return false;
 		});
 	}
@@ -157,49 +198,66 @@ CrontabTimer.prototype = (function () {
 	};
 	// calculate next run time and store cache
 	var calcNextTime = function () {
-		log('call calcNextTime');
-		var d = new Date();
-
-		this.nextTime++;
+		var d = new Date(this.now.getTime());
+		var checkResult = checkForAllUnits.call(this, d);
+		var tmp = 0;
+		while (tmp < 100 && checkResult !== true) {
+			methodsForTimeUnit[checkResult].setNext.call(d);
+			checkResult = checkForAllUnits.call(this, d);
+			tmp++;
+		}
+		this.nextTime = d.getTime();
 	};
 	// calculate previous run time and store cache
 	var calcPrevTime = function () {
-		log('call calcPrevTime');
-		this.prevTime--;
+		var d = new Date(this.now.getTime());
+		var checkResult = checkForAllUnits.call(this, d);
+		var tmp = 0;
+		while (tmp < 100 && checkResult !== true) {
+			methodsForTimeUnit[checkResult].setPrev.call(d);
+			checkResult = checkForAllUnits.call(this, d);
+			tmp++;
+		}
+		this.prevTime = d.getTime();
 	};
-	var timeCheck = function (date) {
+	var resetNow = function () {
+		if (this.option.test)
+			this.now = this.option.now;
+		else
+			this.now = new Date();
 	};
 	// public methods
 	return {
 		// next run time
 		getNextTime: function () {
-			log('call getNextTime');
-			// 이미 계산된 값이 유효하지 않으면 해당 값을 리턴
-			if (this.nextTime == 0 || this.nextTime < new Date().getTime()) {
+			resetNow.call(this);
+			// check calculated value is valid
+			if (this.nextTime == 0 || this.nextTime < this.now.getTime()) {
 				calcNextTime.call(this);
+				calcPrevTime.call(this);
 			}
 			return this.nextTime;
 		},
 		// previous run time
 		getPrevTime: function () {
-			log('call getPrevTime');
-			// 이미 계산된 값이 유효하지 않으면 해당 값을 리턴
-			if (this.prevTime == 0) {
+			resetNow.call(this);
+			// check calculated value is valid
+			if (this.nextTime == 0 || this.nextTime < this.now.getTime()) {
+				calcNextTime.call(this);
 				calcPrevTime.call(this);
 			}
 			return this.prevTime;
+		},
+		getNextDate: function () {
+			return new Date(this.getNextTime());
+		},
+		getPrevDate: function () {
+			return new Date(this.getPrevTime());
 		},
 		toString: function () {
 			return this.timeString;
 		},
 		test: function () {
-			var dt = new Date();
-			methodsForTimeUnit['minute'].plusOne.call(dt);
-			console.log(dt.toLocaleTimeString());
-			methodsForTimeUnit['minute'].plusOne.call(dt);
-			console.log(dt.toLocaleTimeString());
-			methodsForTimeUnit['minute'].plusOne.call(dt);
-			console.log(dt.toLocaleTimeString());
 		}
 	};
 })();
