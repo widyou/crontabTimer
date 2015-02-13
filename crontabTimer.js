@@ -37,30 +37,65 @@ if (!Object.keys) {
 	}());
 }
 
+Array.range = function () {
+	if (arguments.length < 2) {
+		return null;
+	}
+	var start = arguments[0];
+	var end = arguments[1];
+	var step = (arguments.length >= 3) ? arguments[2] : 1;
+	
+	if (step == 0 || (step > 0 && start > end) || (step < 0 && start < end)) {
+		return [];
+	} else if (start == end) {
+		return [start];
+	} else {
+		var i = start;
+		var result = [];
+		while (i <= end) {
+			result.push(i);
+			i += step;
+		}
+		return result;
+	}
+}
+
 // define base methods for each unit
 var methodsForTimeUnit = {
 	minute: {
 		get: Date.prototype.getMinutes,
-		set: Date.prototype.setMinutes
+		set: Date.prototype.setMinutes,
+		getFirst: function () {return 0;},
+		getLast: function () {return 59;}
 	},
 	hour: {
 		get: Date.prototype.getHours,
-		set: Date.prototype.setHours
+		set: Date.prototype.setHours,
+		getFirst: function () {return 0;},
+		getLast: function () {return 59;}
 	},
 	dayOfMonth: {
 		get: Date.prototype.getDate,
-		set: Date.prototype.setDate
+		set: Date.prototype.setDate,
+		getFirst: function () {return 1;},
+		getLast: function () {
+			return new Date(this.getFullYear(), this.getMonth() + 1, 0).getDate();
+		}
 	},
 	month: {
 		get: function () { return this.getMonth() + 1; },
-		set: function (month) { return this.setMonth(month - 1); }
+		set: function (month) { return this.setMonth(month - 1); },
+		getFirst: function () {return 1;},
+		getLast: function () {return 12;}
 	},
 	DayOfWeek: {
 		get: Date.prototype.getDay,
 		set: function (dow) {
 			var thisDow = this.getDay();
 			this.setDate(this.getDate() + (dow - thisDow));
-		}
+		},
+		getFirst: function () {return 0;},
+		getLast: function () {return 6;}
 	}
 };
 
@@ -86,6 +121,15 @@ for (var i in timeUnits) {
 		var u = ''+unit; // convert closure to local value
 		return function () {
 			methodsForTimeUnit[u].add.call(this, -1);
+		};
+	})();
+	methodsForTimeUnit[unit].getAllRange = (function() {
+		var u = ''+unit; // convert closure to local value
+		return function () {
+			return Array.range(
+				methodsForTimeUnit[u].getFirst.call(this),
+				methodsForTimeUnit[u].getLast.call(this),
+				1);
 		};
 	})();
 	methodsForTimeUnit[unit].getDifference = (function() {
@@ -171,16 +215,37 @@ CrontabTimer.prototype = (function () {
 		var value = methodsForTimeUnit[unit].get.call(date);
 		// check for unit
 		return -1 !== this.time[unit].findIndex(function (e) {
-			if (e == '*' || (e.match(/[0-9]+/) && value == parseInt(e))) {
+			if (e == '*' || (e.match(/^[0-9]+$/) && value == parseInt(e))) {
 				//console.log({r:'success1',u:unit,e:e,value:value});
 				return true;
 			} else {
-				var matchArray = e.match(/\*\/(\d+)/);
+				// ['*','2','*/2','0-3','3-4/3','2/2','2/*'].find(function(e){console.log(e.match(/^(\*|\d+)(?:-(\d+))?(?:\/(\d+))?$/)); return false;});
+				var matchArray = e.match(/^(\*|\d+)(?:-(\d+))?(?:\/(\d+))?$/);
 				if (matchArray) {
-					var term = matchArray[1];
-					if (value % parseInt(term) == 0) {
-						//console.log({r:'success2',u:unit,e:e,value:value});
-						return true;
+					var matchArray = e.match(/^(\*)(?:-(\d+))?(?:\/(\d+))?$/);
+					if (matchArray) {
+						var start = matchArray[1];
+						var end = matchArray[2];
+						var step = matchArray[3];
+						if (typeof end === 'undefined' && typeof step === 'undefined') {
+							tmpResult[start] = start;
+						} else {
+							if (typeof step === 'undefined') {
+								step = 1;
+							} else if (step.match(/\d+/)) {
+								step = parseInt(matchArray[3]);
+							} else {
+								//continue;
+							}
+
+							if (start == '*' && typeof end === 'undefined') {
+								start = methodsForTimeUnit[unit].getFirst.call()
+							}
+							var range;
+							if (start == '*') {
+								//range = 
+							}
+						}
 					}
 				}
 			}

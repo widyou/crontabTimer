@@ -61,7 +61,15 @@
 			assert.strictEqual(new Date(2015, 2-1,  4, 13, 4).getTime(), ct.getPrevTime(), "simple check prev(day of week)");
 			assert.strictEqual(new Date(2015, 2-1, 11, 13, 4).getTime(), ct.getNextDate().getTime(), "simple check next(day of week) 2");
 			assert.strictEqual(new Date(2015, 2-1,  4, 13, 4).getTime(), ct.getPrevDate().getTime(), "simple check prev(day of week) 2");
-});
+		});
+		QUnit.test("term test", function(assert) {
+			var ct = new CrontabTimer('*/20 * * * *', {
+				test: true,
+				now: new Date(2015, 2-1, 10, 13, 4)
+			});
+			assert.strictEqual(new Date(2015, 2-1, 10, 13, 20).getTime(), ct.getNextTime(), "simple check next(minute)");
+			assert.strictEqual(new Date(2015, 2-1, 10, 13, 0).getTime(), ct.getPrevTime(), "simple check prev(minute)");
+		});
 	</script>
 </body>
 </html>
